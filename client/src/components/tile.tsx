@@ -1,28 +1,65 @@
-"use client";
-
 import React from "react";
 import styled from "styled-components";
 
 interface TileProps {
   bgcolor: string;
-  labelx?: string;
-  labely?: string;
+  position: string;
+  pieceIcon?: string;
+  isSelected?: boolean;
+  handlePieceDrop: (fromPosition: string, toPosition: string) => void;
 }
 
-const Tile: React.FC<TileProps> = ({ bgcolor, labelx, labely }) => {
+const Tile: React.FC<TileProps> = ({
+  bgcolor,
+  position,
+  pieceIcon,
+  isSelected = false,
+  handlePieceDrop,
+}) => {
+  const handleDragStart = (e: React.DragEvent<HTMLImageElement>) => {
+    e.dataTransfer.setData("position", position);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const fromPosition = e.dataTransfer.getData("position");
+    handlePieceDrop(fromPosition, position);
+  };
+
+  const allowDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
   return (
-    <TileWrapper $bgcolor={bgcolor}>
-      {labelx && <LabelX>{labelx}</LabelX>}
-      {labely && <LabelY>{labely}</LabelY>}
+    <TileWrapper
+      $bgcolor={bgcolor}
+      $isSelected={isSelected}
+      onDrop={handleDrop}
+      onDragOver={allowDrop}
+    >
+      {position[1] === "8" && <LabelX>{position[0]}</LabelX>}
+      {position[0] === "a" && <LabelY>{position[1]}</LabelY>}
+      {pieceIcon && (
+        <PieceIcon
+          src={`/chessIcon/${pieceIcon}.png`}
+          alt={pieceIcon}
+          draggable
+          onDragStart={handleDragStart}
+        />
+      )}
     </TileWrapper>
   );
 };
 
-const TileWrapper = styled.div<{ $bgcolor: string }>`
+const TileWrapper = styled.div<{
+  $bgcolor: string;
+  $isSelected: boolean;
+}>`
   position: relative;
   width: 50px;
   height: 50px;
-  background-color: ${({ $bgcolor }) => $bgcolor};
+  background-color: ${({ $bgcolor, $isSelected }) =>
+    $isSelected ? "red" : $bgcolor};
 `;
 
 const LabelX = styled.div`
@@ -39,6 +76,15 @@ const LabelY = styled.div`
   left: 2px;
   font-size: 12px;
   color: black;
+`;
+
+const PieceIcon = styled.img`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  height: auto;
 `;
 
 export default Tile;
