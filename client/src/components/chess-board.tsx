@@ -37,10 +37,8 @@ const Chessboard: React.FC<ChessBoardProps> = ({
   const [selectedPiece, setSelectedPiece] = useState<string | null>(null);
 
   const movePiece = (from: string, to: string) => {
-    // Implement your logic to move the piece
     console.log(`Move piece from ${from} to ${to}`);
   };
-
 
   const tiles = useMemo(() => {
     const tempTiles: JSX.Element[] = [];
@@ -55,13 +53,13 @@ const Chessboard: React.FC<ChessBoardProps> = ({
             for (let i = 0; i < parseInt(char, 10); i++) {
               const isBlack = (rowIndex + colIndex) % 2 === 1;
               const bgColor = isBlack ? "#b58863" : "#f0d9b5";
-              const position = xAxis[colIndex]+yAxis[rowIndex];
+              const position = xAxis[colIndex] + yAxis[rowIndex];
               tempTiles.push(
                 <Tile
                   key={`${rowIndex}-${colIndex}`}
                   bgcolor={bgColor}
                   position={position}
-                  movePiece={movePiece}
+                  handlePieceDrop={movePiece} // Corrected prop name
                 />
               );
               colIndex++;
@@ -69,7 +67,7 @@ const Chessboard: React.FC<ChessBoardProps> = ({
           } else {
             const pieceIcon = pieceIcons[char];
             const tileKey = `${rowIndex}-${colIndex}`;
-            const position = xAxis[colIndex]+yAxis[rowIndex];
+            const position = xAxis[colIndex] + yAxis[rowIndex];
             tempTiles.push(
               <Tile
                 key={tileKey}
@@ -78,7 +76,7 @@ const Chessboard: React.FC<ChessBoardProps> = ({
                 pieceIcon={pieceIcon}
                 isSelected={selectedPiece === tileKey}
                 handleClick={() => setSelectedPiece(tileKey)}
-                movePiece={movePiece}
+                handlePieceDrop={movePiece} // Corrected prop name
               />
             );
             colIndex++;
