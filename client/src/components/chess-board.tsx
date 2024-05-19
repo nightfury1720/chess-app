@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import styled from "styled-components";
 import Tile from "./tile";
+import { validMoveChecker, movePlayed } from "../lib/helper";
 
 const Container = styled.div`
   display: inline-grid;
@@ -27,67 +28,79 @@ const pieceIcons: { [key: string]: string } = {
   K: "wK", // White King
 };
 
-interface ChessBoardProps {
-  fen?: string;
-}
+const initialBoardState = [
+  ["br", "bn", "bb", "bq", "bk", "bb", "bn", "br"],
+  ["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
+  [null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null],
+  ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
+  ["wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr"],
+];
 
-const Chessboard: React.FC<ChessBoardProps> = ({
-  fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-}) => {
+interface ChessBoardProps {}
+
+const Chessboard: React.FC<ChessBoardProps> = () => {
   const [selectedPiece, setSelectedPiece] = useState<string | null>(null);
+  const [board, setBoard] = useState(initialBoardState);
 
   const movePiece = (from: string, to: string) => {
+    if (validMoveChecker(from, to)) {
+      movePlayed(from, to);
+    }
     console.log(`Move piece from ${from} to ${to}`);
   };
 
   const tiles = useMemo(() => {
     const tempTiles: JSX.Element[] = [];
-    if (fen) {
-      const rows = fen.split(" ")[0].split("/");
-      rows.forEach((row, rowIndex) => {
-        let colIndex = 0;
-        row.split("").forEach((char) => {
+    board.forEach((row, rowIndex) => {
+      row.forEach((piece, colIndex) => {
+        const isBlack = (rowIndex + colIndex) % 2 === 1;
+        const bgColor = isBlack ? "#b58863" : "#f0d9b5";
+        const position = xAxis[colIndex] + yAxis[rowIndex];
+        const tileKey = `${rowIndex}-${colIndex}`;
+        const pieceIcon = piece ? pieceIcons[piece.charAt(1)] : undefined;
+        tempTiles.push(
+          <Tile
+            key={tileKey}
+            bgcolor={bgColor}
+            position={position}
+            pieceIcon={pieceIcon}
+            isSelected={selectedPiece === tileKey}
+            handleClick={() => setSelectedPiece(tileKey)}
+            handlePieceDrop={movePiece}
+          />
+        );
+      });
+    });
+    return tempTiles;
+  }, [board, selectedPiece]);
+
+  return (
+    <Container>
+      {board.map((row, rowIndex) => {
+        return row.map((piece, colIndex) => {
           const isBlack = (rowIndex + colIndex) % 2 === 1;
           const bgColor = isBlack ? "#b58863" : "#f0d9b5";
-          if (!isNaN(parseInt(char, 10))) {
-            for (let i = 0; i < parseInt(char, 10); i++) {
-              const isBlack = (rowIndex + colIndex) % 2 === 1;
-              const bgColor = isBlack ? "#b58863" : "#f0d9b5";
-              const position = xAxis[colIndex] + yAxis[rowIndex];
-              tempTiles.push(
-                <Tile
-                  key={`${rowIndex}-${colIndex}`}
-                  bgcolor={bgColor}
-                  position={position}
-                  handlePieceDrop={movePiece} // Corrected prop name
-                />
-              );
-              colIndex++;
-            }
-          } else {
-            const pieceIcon = pieceIcons[char];
-            const tileKey = `${rowIndex}-${colIndex}`;
-            const position = xAxis[colIndex] + yAxis[rowIndex];
-            tempTiles.push(
-              <Tile
-                key={tileKey}
-                bgcolor={bgColor}
-                position={position}
-                pieceIcon={pieceIcon}
-                isSelected={selectedPiece === tileKey}
-                handleClick={() => setSelectedPiece(tileKey)}
-                handlePieceDrop={movePiece} // Corrected prop name
-              />
-            );
-            colIndex++;
-          }
+          const position = xAxis[colIndex] + yAxis[rowIndex];
+          const tileKey = `${rowIndex}-${colIndex}`;
+          const pieceIcon = piece ? pieceIcons[piece.charAt(1)] : undefined;
+          return (
+            <Tile
+              key={tileKey}
+              bgcolor={bgColor}
+              position={position}
+              pieceIcon={pieceIcon}
+              isSelected={selectedPiece === tileKey}
+              handleClick={() => setSelectedPiece(tileKey)}
+              handlePieceDrop={movePiece}
+            />
+          );
         });
-      });
-    }
-    return tempTiles;
-  }, [fen, selectedPiece]);
-
-  return <Container>{tiles}</Container>;
+      })}
+    </Container>
+  );
 };
 
 export default Chessboard;

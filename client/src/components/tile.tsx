@@ -6,7 +6,7 @@ interface TileProps {
   position: string;
   pieceIcon?: string;
   isSelected?: boolean;
-  handleClick?: () => void; // Added back handleClick prop
+  handleClick?: () => void;
   handlePieceDrop: (fromPosition: string, toPosition: string) => void;
 }
 
@@ -18,6 +18,7 @@ const Tile: React.FC<TileProps> = ({
   handleClick,
   handlePieceDrop,
 }) => {
+  console.log("RENDERING");
   const handleDragStart = (e: React.DragEvent<HTMLImageElement>) => {
     e.dataTransfer.setData("position", position);
   };
@@ -36,7 +37,7 @@ const Tile: React.FC<TileProps> = ({
     <TileWrapper
       $bgcolor={bgcolor}
       $isSelected={isSelected}
-      onClick={handleClick} // Added back onClick handler
+      onClick={handleClick} 
       onDrop={handleDrop}
       onDragOver={allowDrop}
     >
@@ -63,7 +64,7 @@ const TileWrapper = styled.div<{
   height: 50px;
   background-color: ${({ $bgcolor, $isSelected }) =>
     $isSelected ? "red" : $bgcolor};
-  cursor: pointer; // Added cursor pointer for clickable tiles
+  cursor: pointer; 
 `;
 
 const LabelX = styled.div`
