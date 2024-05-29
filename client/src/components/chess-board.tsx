@@ -1,34 +1,15 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import styled from "styled-components";
 import Tile from "./tile";
 import {
   validMoveChecker,
   movePlayed,
   initializeChessboardPieces,
-  parseBigIntToChessboardArray,
 } from "../lib/helper";
 import { Board } from "../models/boardState";
 
-const Container = styled.div`
-  display: inline-grid;
-  grid-template-columns: repeat(8, 50px);
-  grid-template-rows: repeat(8, 50px);
-`;
-
 const xAxis = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const yAxis = ["1", "2", "3", "4", "5", "6", "7", "8"];
-
-// const initialBoardState = [
-//   ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
-//   ["bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"],
-//   [null, null, null, null, null, null, null, null],
-//   [null, null, null, null, null, null, null, null],
-//   [null, null, null, null, null, null, null, null],
-//   [null, null, null, null, null, null, null, null],
-//   ["wP", "wP", "wP", "wP", "wP", "wP", "wP", "wP"],
-//   ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"],
-// ];
 
 interface ChessBoardProps {}
 
@@ -49,14 +30,22 @@ const Chessboard: React.FC<ChessBoardProps> = () => {
     setBoard(() => new Board(pieces, 0));
   }, []);
 
-  useEffect(() => {
-    console.log("Board", board.pieces);
-  }, [board]);
+  // useEffect(() => {
+  //   console.log("Board", board.pieces);
+  // }, [board]);
+
+  const parsedBoard = useMemo(() => board.parseBoardStateIn2DArray(), [board]);
 
   return (
-    <Container>
-      {board.parseBoardStateIn2DArray().map((row, rowIndex) => {
-        return row.map((piece, colIndex) => {
+    <div
+      style={{
+        display: "inline-grid",
+        gridTemplateColumns: "repeat(8, 50px)",
+        gridTemplateRows: "repeat(8, 50px)",
+      }}
+    >
+      {parsedBoard.map((row, rowIndex) =>
+        row.map((piece, colIndex) => {
           const isBlack = (rowIndex + colIndex) % 2 === 1;
           const bgColor = isBlack ? "#b58863" : "#f0d9b5";
           const position = xAxis[colIndex] + yAxis[rowIndex];
@@ -73,9 +62,9 @@ const Chessboard: React.FC<ChessBoardProps> = () => {
               handlePieceDrop={movePiece}
             />
           );
-        });
-      })}
-    </Container>
+        })
+      )}
+    </div>
   );
 };
 

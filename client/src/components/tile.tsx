@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import Image from "next/image";
 
 interface TileProps {
   bgcolor: string;
@@ -10,6 +10,31 @@ interface TileProps {
   handlePieceDrop: (fromPosition: string, toPosition: string) => void;
 }
 
+const labelXStyle: React.CSSProperties = {
+  position: "absolute",
+  bottom: "2px",
+  right: "2px",
+  fontSize: "12px",
+  color: "black",
+};
+
+const labelYStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "2px",
+  left: "2px",
+  fontSize: "12px",
+  color: "black",
+};
+
+const pieceIconWrapperStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: "80%",
+  height: "80%",
+};
+
 const Tile: React.FC<TileProps> = ({
   bgcolor,
   position,
@@ -18,7 +43,6 @@ const Tile: React.FC<TileProps> = ({
   handleClick,
   handlePieceDrop,
 }) => {
-  console.log("RENDERING");
   const handleDragStart = (e: React.DragEvent<HTMLImageElement>) => {
     e.dataTransfer.setData("position", position);
   };
@@ -33,63 +57,37 @@ const Tile: React.FC<TileProps> = ({
     e.preventDefault();
   };
 
+  const tileStyle: React.CSSProperties = {
+    position: "relative",
+    width: "50px",
+    height: "50px",
+    backgroundColor: isSelected ? "red" : bgcolor,
+    cursor: "pointer",
+  };
+
   return (
-    <TileWrapper
-      $bgcolor={bgcolor}
-      $isSelected={isSelected}
-      onClick={handleClick} 
+    <div
+      style={tileStyle}
+      onClick={handleClick}
       onDrop={handleDrop}
       onDragOver={allowDrop}
     >
-      {position[1] === "8" && <LabelX>{position[0]}</LabelX>}
-      {position[0] === "a" && <LabelY>{position[1]}</LabelY>}
+      {position[1] === "8" && <div style={labelXStyle}>{position[0]}</div>}
+      {position[0] === "a" && <div style={labelYStyle}>{position[1]}</div>}
       {pieceIcon && (
-        <PieceIcon
-          src={`/chessIcon/${pieceIcon}.png`}
-          alt={pieceIcon}
-          draggable
-          onDragStart={handleDragStart}
-        />
+        <div style={pieceIconWrapperStyle}>
+          <Image
+            src={`/chessIcon/${pieceIcon}.png`}
+            alt={pieceIcon}
+            layout="fill"
+            sizes="(max-width: 50px) 100vw, 50px"
+            draggable
+            onDragStart={handleDragStart}
+          />
+        </div>
       )}
-    </TileWrapper>
+    </div>
   );
 };
-
-const TileWrapper = styled.div<{
-  $bgcolor: string;
-  $isSelected: boolean;
-}>`
-  position: relative;
-  width: 50px;
-  height: 50px;
-  background-color: ${({ $bgcolor, $isSelected }) =>
-    $isSelected ? "red" : $bgcolor};
-  cursor: pointer; 
-`;
-
-const LabelX = styled.div`
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  font-size: 12px;
-  color: black;
-`;
-
-const LabelY = styled.div`
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  font-size: 12px;
-  color: black;
-`;
-
-const PieceIcon = styled.img`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80%;
-  height: auto;
-`;
 
 export default Tile;
