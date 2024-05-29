@@ -11,15 +11,72 @@ import {
   Position,
 } from "../models/piece";
 
-export function parseBigIntToChessboardArray(bigIntNum: bigint, piece: string): string[] {
- 
-  const binaryString = bigIntNum.toString(2).padStart(64, '0');
-
-  // Map each digit of the binary string to a corresponding piece representation
-  const chessboardArray = binaryString.split('').map(char => char === '1' ? piece : '0');
-
-  return chessboardArray;
-}
+export const positionMap: Record<string, number> = {
+  a1: 0,
+  b1: 1,
+  c1: 2,
+  d1: 3,
+  e1: 4,
+  f1: 5,
+  g1: 6,
+  h1: 7,
+  a2: 8,
+  b2: 9,
+  c2: 10,
+  d2: 11,
+  e2: 12,
+  f2: 13,
+  g2: 14,
+  h2: 15,
+  a3: 16,
+  b3: 17,
+  c3: 18,
+  d3: 19,
+  e3: 20,
+  f3: 21,
+  g3: 22,
+  h3: 23,
+  a4: 24,
+  b4: 25,
+  c4: 26,
+  d4: 27,
+  e4: 28,
+  f4: 29,
+  g4: 30,
+  h4: 31,
+  a5: 32,
+  b5: 33,
+  c5: 34,
+  d5: 35,
+  e5: 36,
+  f5: 37,
+  g5: 38,
+  h5: 39,
+  a6: 40,
+  b6: 41,
+  c6: 42,
+  d6: 43,
+  e6: 44,
+  f6: 45,
+  g6: 46,
+  h6: 47,
+  a7: 48,
+  b7: 49,
+  c7: 50,
+  d7: 51,
+  e7: 52,
+  f7: 53,
+  g7: 54,
+  h7: 55,
+  a8: 56,
+  b8: 57,
+  c8: 58,
+  d8: 59,
+  e8: 60,
+  f8: 61,
+  g8: 62,
+  h8: 63,
+};
 
 export const initializeChessboardPieces = (): Piece[] => {
   const pieces: Piece[] = [];
@@ -31,17 +88,55 @@ export const initializeChessboardPieces = (): Piece[] => {
     new Bishop(TeamType.White, new Position(BigInt("0x24"))),
     new Queen(TeamType.White, new Position(BigInt("0x08"))),
     new King(TeamType.White, new Position(BigInt("0x10"))),
-    new Pawn(TeamType.White, new Position(BigInt("0b1111111100000000"))),
+    new Pawn(TeamType.White, new Position(BigInt("0b1111111100000000")))
   );
 
   // Add black pieces
   pieces.push(
-    new Rook(TeamType.Black, new Position(BigInt("0b1000000100000000000000000000000000000000000000000000000000000000"))),
-    new Knight(TeamType.Black, new Position(BigInt("0b100001000000000000000000000000000000000000000000000000000000000"))),
-    new Bishop(TeamType.Black, new Position(BigInt("0b10010000000000000000000000000000000000000000000000000000000000"))),
-    new Queen(TeamType.Black, new Position(BigInt("0b100000000000000000000000000000000000000000000000000000000000"))),
-    new King(TeamType.Black, new Position(BigInt("0b1000000000000000000000000000000000000000000000000000000000000"))),
-    new Pawn(TeamType.Black, new Position(BigInt("0b11111111000000000000000000000000000000000000000000000000")))
+    new Rook(
+      TeamType.Black,
+      new Position(
+        BigInt(
+          "0b1000000100000000000000000000000000000000000000000000000000000000"
+        )
+      )
+    ),
+    new Knight(
+      TeamType.Black,
+      new Position(
+        BigInt(
+          "0b100001000000000000000000000000000000000000000000000000000000000"
+        )
+      )
+    ),
+    new Bishop(
+      TeamType.Black,
+      new Position(
+        BigInt(
+          "0b10010000000000000000000000000000000000000000000000000000000000"
+        )
+      )
+    ),
+    new Queen(
+      TeamType.Black,
+      new Position(
+        BigInt("0b100000000000000000000000000000000000000000000000000000000000")
+      )
+    ),
+    new King(
+      TeamType.Black,
+      new Position(
+        BigInt(
+          "0b1000000000000000000000000000000000000000000000000000000000000"
+        )
+      )
+    ),
+    new Pawn(
+      TeamType.Black,
+      new Position(
+        BigInt("0b11111111000000000000000000000000000000000000000000000000")
+      )
+    )
   );
 
   return pieces;
@@ -93,21 +188,4 @@ export const getPossibleKingMoves = (
 ): Position[] => {
   // Implement the logic to calculate possible moves for a king
   return [];
-};
-
-export const validMoveChecker = (
-  initialPosition: string,
-  finalPosition: string,
-  board: any
-): boolean => {
-  // Implement the logic to check if a move is valid
-  return true;
-};
-
-export const movePlayed = (
-  initialPosition: string,
-  finalPosition: string
-): void => {
-  // Implement the logic when a move is played
-  return;
 };

@@ -18,28 +18,30 @@ export class Position {
   constructor(bitboard: bigint) {
     this.bitboard = bitboard;
   }
-  isSet(x: number, y: number): boolean {
-    const position = BigInt(1) << BigInt(y * 8 + x);
+
+  isSet(index: number): boolean {
+    const position = BigInt(1) << BigInt(index);
     return (this.bitboard & position) !== BigInt(0);
   }
 
-  // Set a particular position in the bitboard
-  setPosition(x: number, y: number) {
-    const position = BigInt(1) << BigInt(y * 8 + x);
+  setPosition(index: number) {
+    const position = BigInt(1) << BigInt(index);
     this.bitboard |= position;
   }
 
-  // Clear a particular position in the bitboard
-  clearPosition(x: number, y: number) {
-    const position = BigInt(1) << BigInt(y * 8 + x);
+  clearPosition(index: number) {
+    const position = BigInt(1) << BigInt(index);
     this.bitboard &= ~position;
+  }
+
+  clone(bitboard: bigint = this.bitboard): Position {
+    return new Position(bitboard);
   }
 }
 
 export abstract class Piece {
   possibleMoves: Position[] = [];
   hasMoved: boolean = false;
-
 
   constructor(
     public type: PieceType,
@@ -48,14 +50,6 @@ export abstract class Piece {
   ) {}
 
   abstract clone(): Piece;
-
-  samePiecePosition(other: Piece): boolean {
-    return (
-      this.position.bitboard === other.position.bitboard &&
-      this.type === other.type &&
-      this.team === other.team
-    );
-  }
 }
 
 export class Pawn extends Piece {
@@ -99,7 +93,9 @@ export class Rook extends Piece {
   }
 
   clone(): Rook {
-    return new Rook(this.team, new Position(this.position.bitboard));
+    const clone = new Rook(this.team, new Position(this.position.bitboard));
+    clone.hasMoved = this.hasMoved;
+    return clone;
   }
 }
 
@@ -119,6 +115,8 @@ export class King extends Piece {
   }
 
   clone(): King {
-    return new King(this.team, new Position(this.position.bitboard));
+    const clone = new King(this.team, new Position(this.position.bitboard));
+    clone.hasMoved = this.hasMoved;
+    return clone;
   }
 }

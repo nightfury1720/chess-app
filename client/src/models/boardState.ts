@@ -6,9 +6,7 @@ import {
   getPossibleRookMoves,
   getPossibleQueenMoves,
   getPossibleKingMoves,
-  initializeChessboardPieces,
-  validMoveChecker,
-  movePlayed,
+  positionMap,
 } from "../lib/helper";
 
 export class Board {
@@ -61,89 +59,67 @@ export class Board {
     }
   }
 
-  //   playMove(
-  //     enPassantMove: boolean,
-  //     validMove: boolean,
-  //     playedPiece: Piece,
-  //     destination: Position
-  //   ): boolean {
-  //     const pawnDirection = playedPiece.team === TeamType.White ? 1 : -1;
-  //     const destinationPiece = this.pieces.find(
-  //       (p) => p.position.bitboard === destination.bitboard
-  //     );
+  playMove(
+    pieceType: PieceType,
+    sourcePos: string,
+    destinationPos: string,
+    pieceTypeDest: string | null
+  ): Board {
+    const currentTeam = this.currentTeam;
+    // console.log(
+    //   currentTeam,
+    //   pieceType,
+    //   pieceTypeDest,
+    //   sourcePos,
+    //   destinationPos
+    // );
+    if (pieceTypeDest !== null) {
+      const destPieceType = pieceTypeDest[1];
+      const destPieceIndex = this.pieces.findIndex(
+        (piece) =>
+          piece.type === (destPieceType as PieceType) &&
+          piece.team !== currentTeam
+      );
+      this.pieces[destPieceIndex].position.clearPosition(
+        positionMap[destinationPos]
+      );
+    }
+    const currentPieceIndex = this.pieces.findIndex(
+      (piece) => piece.type === pieceType && piece.team === currentTeam
+    );
+    const updatedPosition = this.pieces[currentPieceIndex].position;
+    updatedPosition.clearPosition(positionMap[sourcePos]);
+    updatedPosition.setPosition(positionMap[destinationPos]);
 
-  //     if (
-  //       playedPiece.type === PieceType.King &&
-  //       destinationPiece?.type === PieceType.Rook &&
-  //       destinationPiece.team === playedPiece.team
-  //     ) {
-  //       const direction =
-  //         destinationPiece.position.bitboard - playedPiece.position.bitboard > 0
-  //           ? 1
-  //           : -1;
-  //       const newKingXPosition =
-  //         playedPiece.position.bitboard + BigInt(direction * 2);
-  //       this.pieces = this.pieces.map((p) => {
-  //         if (p.samePiecePosition(playedPiece)) {
-  //           p.position.bitboard = newKingXPosition;
-  //         } else if (p.samePiecePosition(destinationPiece)) {
-  //           p.position.bitboard = newKingXPosition - BigInt(direction);
-  //         }
-  //         return p;
-  //       });
+    const noOfTurns = this.totalTurns + 1;
+    const clone = this.clone(noOfTurns);
+    clone.calculateAllMoves();
+    return clone;
+  }
 
-  //       this.calculateAllMoves();
-  //       return true;
-  //     }
-
-  //     if (enPassantMove) {
-  //       this.pieces = this.pieces.reduce((results, piece) => {
-  //         if (piece.samePiecePosition(playedPiece)) {
-  //           if (piece.type === PieceType.Pawn) (piece as Pawn).enPassant = false;
-  //           piece.position = destination;
-  //           piece.hasMoved = true;
-  //           results.push(piece);
-  //         } else if (
-  //           !piece.samePosition(
-  //             new Position(destination.bitboard - BigInt(pawnDirection))
-  //           )
-  //         ) {
-  //           if (piece.type === PieceType.Pawn) (piece as Pawn).enPassant = false;
-  //           results.push(piece);
-  //         }
-  //         return results;
-  //       }, [] as Piece[]);
-
-  //       this.calculateAllMoves();
-  //     } else if (validMove) {
-  //       this.pieces = this.pieces.reduce((results, piece) => {
-  //         if (piece.samePiecePosition(playedPiece)) {
-  //           if (piece.type === PieceType.Pawn) {
-  //             (piece as Pawn).enPassant =
-  //               Math.abs(
-  //                 Number(playedPiece.position.bitboard - destination.bitboard)
-  //               ) === 2;
-  //           }
-  //           piece.position = destination;
-  //           piece.hasMoved = true;
-  //           results.push(piece);
-  //         } else if (!piece.samePosition(destination)) {
-  //           if (piece.type === PieceType.Pawn) {
-  //             (piece as Pawn).enPassant = false;
-  //           }
-  //           results.push(piece);
-  //         }
-  //         return results;
-  //       }, [] as Piece[]);
-
-  //       this.calculateAllMoves();
-  //     } else {
-  //       return false;
-  //     }
-
-  //     this.totalTurns++;
-  //     return true;
-  //   }
+  movePlayedValidityCheck(
+    pieceType: PieceType,
+    sourcePos: string,
+    destinationPos: string
+  ): boolean {
+    const currentTeam = this.currentTeam;
+    const currentPieceIndex = this.pieces.findIndex(
+      (piece) => piece.type === pieceType && piece.team === currentTeam
+    );
+    console.log(this.pieces);
+    console.log(
+      currentTeam,
+      pieceType,
+      currentPieceIndex,
+      sourcePos,
+      destinationPos
+    );
+    const updatedPosition = this.pieces[currentPieceIndex].position.clone();
+    updatedPosition.clearPosition(positionMap[sourcePos]);
+    updatedPosition.setPosition(positionMap[destinationPos]);
+    // return this.pieces[currentPieceIndex].possibleMoves.some((pos) => pos.bitboard === updatedPosition.bitboard);
+    return true;
+  }
 
   parseBoardStateIn2DArray = (): string[][] => {
     const boardArray: string[][] = Array.from({ length: 8 }, () =>
@@ -166,10 +142,10 @@ export class Board {
     return boardArray;
   };
 
-  clone(): Board {
+  clone(totalTurns: number): Board {
     return new Board(
       this.pieces.map((p) => p.clone()),
-      this.totalTurns
+      totalTurns
     );
   }
 }

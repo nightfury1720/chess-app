@@ -1,13 +1,15 @@
 import React from "react";
-import Image from "next/image";
+import Image from "next/legacy/image";
+import { PieceType } from "../models/piece";
 
 interface TileProps {
   bgcolor: string;
   position: string;
   pieceIcon?: string;
   isSelected?: boolean;
+  draggable?: boolean;
   handleClick?: () => void;
-  handlePieceDrop: (fromPosition: string, toPosition: string) => void;
+  handlePieceDrop: (pieceType: PieceType, from: string, to: string) => void;
 }
 
 const labelXStyle: React.CSSProperties = {
@@ -40,17 +42,37 @@ const Tile: React.FC<TileProps> = ({
   position,
   pieceIcon,
   isSelected = false,
+  draggable = false,
   handleClick,
   handlePieceDrop,
 }) => {
   const handleDragStart = (e: React.DragEvent<HTMLImageElement>) => {
-    e.dataTransfer.setData("position", position);
+    if (draggable) {
+      e.dataTransfer.setData("position", position);
+      e.dataTransfer.setData("pieceType", pieceIcon ? pieceIcon[1] : "");
+
+      // Set opacity while dragging
+      e.currentTarget.style.opacity = "1";
+      // Set cursor style
+      e.currentTarget.style.cursor = "grabbing";
+    } else {
+      e.preventDefault();
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLImageElement>) => {
+    // Reset opacity and cursor style when dragging ends
+    e.currentTarget.style.opacity = "1";
+    e.currentTarget.style.cursor = "pointer";
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const fromPosition = e.dataTransfer.getData("position");
-    handlePieceDrop(fromPosition, position);
+    const pieceType = e.dataTransfer.getData("pieceType") as PieceType;
+    if (pieceType && fromPosition) {
+      handlePieceDrop(pieceType, fromPosition, position);
+    }
   };
 
   const allowDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -81,8 +103,10 @@ const Tile: React.FC<TileProps> = ({
             alt={pieceIcon}
             layout="fill"
             sizes="(max-width: 50px) 100vw, 50px"
-            draggable
+            draggable={draggable}
             onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            priority
           />
         </div>
       )}

@@ -1,11 +1,8 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import Tile from "./tile";
-import {
-  validMoveChecker,
-  movePlayed,
-  initializeChessboardPieces,
-} from "../lib/helper";
+import { initializeChessboardPieces } from "../lib/helper";
+import { PieceType } from "../models/piece";
 import { Board } from "../models/boardState";
 
 const xAxis = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -18,9 +15,15 @@ const Chessboard: React.FC<ChessBoardProps> = () => {
   const [selectedPiece, setSelectedPiece] = useState<string | null>(null);
   const [board, setBoard] = useState(new Board([]));
 
-  const movePiece = (from: string, to: string) => {
-    if (validMoveChecker(from, to, board)) {
-      movePlayed(from, to);
+  const movePiece = (pieceType: PieceType, from: string, to: string) => {
+    const destRowIndex = yAxis.indexOf(to[1]);
+    const destColIndex = xAxis.indexOf(to[0]);
+
+    const pieceTypeDest = parsedBoard[destRowIndex][destColIndex];
+    if (board.movePlayedValidityCheck(pieceType, from, to)) {
+      setBoard(() => board.playMove(pieceType, from, to, pieceTypeDest));
+    } else {
+      console.log("KAT GAYA");
     }
     console.log(`Move piece from ${from} to ${to}`);
   };
@@ -51,6 +54,11 @@ const Chessboard: React.FC<ChessBoardProps> = () => {
           const position = xAxis[colIndex] + yAxis[rowIndex];
           const tileKey = `${rowIndex}-${colIndex}`;
           const pieceIcon = piece ? piece : undefined;
+          const draggable = pieceIcon
+            ? pieceIcon[0] === "w"
+              ? board.totalTurns % 2 === 0
+              : board.totalTurns % 2 === 1
+            : false;
           return (
             <Tile
               key={tileKey}
@@ -60,6 +68,7 @@ const Chessboard: React.FC<ChessBoardProps> = () => {
               isSelected={selectedPiece === tileKey}
               handleClick={() => setSelectedPiece(tileKey)}
               handlePieceDrop={movePiece}
+              draggable={draggable}
             />
           );
         })
