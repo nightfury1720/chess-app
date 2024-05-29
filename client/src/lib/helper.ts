@@ -29,8 +29,8 @@ export const initializeChessboardPieces = (): Piece[] => {
     new Rook(TeamType.White, new Position(BigInt("0x81"))),
     new Knight(TeamType.White, new Position(BigInt("0x42"))),
     new Bishop(TeamType.White, new Position(BigInt("0x24"))),
-    new Queen(TeamType.White, new Position(BigInt("0x10"))),
-    new King(TeamType.White, new Position(BigInt("0x08"))),
+    new Queen(TeamType.White, new Position(BigInt("0x08"))),
+    new King(TeamType.White, new Position(BigInt("0x10"))),
     new Pawn(TeamType.White, new Position(BigInt("0b1111111100000000"))),
   );
 
