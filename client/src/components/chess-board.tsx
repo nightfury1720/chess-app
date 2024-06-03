@@ -4,24 +4,30 @@ import Tile from "./tile";
 import { initializeChessboardPieces } from "../lib/helper";
 import { PieceType } from "../models/piece";
 import { Board } from "../models/boardState";
+import { useWebSocket } from "../providers/webSocket";
 
 const xAxis = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const yAxis = ["1", "2", "3", "4", "5", "6", "7", "8"];
 
-interface ChessBoardProps {}
+interface ChessBoardProps {
+  id?: string;
+}
 
 const Chessboard: React.FC<ChessBoardProps> = () => {
   console.log("rendering board");
   const [selectedPiece, setSelectedPiece] = useState<string | null>(null);
   const [board, setBoard] = useState(new Board([]));
+  const [possibleMoves, setPossibleMoves] = useState({});
+  const { sendMessage } = useWebSocket();
 
   const movePiece = (pieceType: PieceType, from: string, to: string) => {
     const destRowIndex = yAxis.indexOf(to[1]);
     const destColIndex = xAxis.indexOf(to[0]);
 
     const pieceTypeDest = parsedBoard[destRowIndex][destColIndex];
-    if (board.movePlayedValidityCheck(pieceType, from, to)) {
+    if (board.movePlayedValidityCheck(pieceType, from, to,[])) {
       setBoard(() => board.playMove(pieceType, from, to, pieceTypeDest));
+      sendMessage(JSON.stringify({ pieceType, from, to, "turns": board.totalTurns }));
     } else {
       console.log("KAT GAYA");
     }

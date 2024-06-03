@@ -6,7 +6,6 @@ import {
   Rook,
   Queen,
   King,
-  PieceType,
   TeamType,
   Position,
 } from "../models/piece";
@@ -140,52 +139,4 @@ export const initializeChessboardPieces = (): Piece[] => {
   );
 
   return pieces;
-};
-
-export const getPossiblePawnMoves = (
-  piece: Piece,
-  boardState: Piece[]
-): Position[] => {
-  // Implement the logic to calculate possible moves for a pawn
-  return [];
-};
-
-export const getPossibleKnightMoves = (
-  piece: Piece,
-  boardState: Piece[]
-): Position[] => {
-  // Implement the logic to calculate possible moves for a knight
-  return [];
-};
-
-export const getPossibleBishopMoves = (
-  piece: Piece,
-  boardState: Piece[]
-): Position[] => {
-  // Implement the logic to calculate possible moves for a bishop
-  return [];
-};
-
-export const getPossibleRookMoves = (
-  piece: Piece,
-  boardState: Piece[]
-): Position[] => {
-  // Implement the logic to calculate possible moves for a rook
-  return [];
-};
-
-export const getPossibleQueenMoves = (
-  piece: Piece,
-  boardState: Piece[]
-): Position[] => {
-  // Implement the logic to calculate possible moves for a queen
-  return [];
-};
-
-export const getPossibleKingMoves = (
-  piece: Piece,
-  boardState: Piece[]
-): Position[] => {
-  // Implement the logic to calculate possible moves for a king
-  return [];
 };

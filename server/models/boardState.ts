@@ -1,5 +1,13 @@
-import { Piece, PieceType, TeamType } from "./piece";
-import { positionMap } from "../lib/helper";
+import { Piece, Position, PieceType, TeamType } from "./piece";
+import {
+  getPossiblePawnMoves,
+  getPossibleKnightMoves,
+  getPossibleBishopMoves,
+  getPossibleRookMoves,
+  getPossibleQueenMoves,
+  getPossibleKingMoves,
+  positionMap,
+} from "../lib/helper";
 
 export class Board {
   pieces: Piece[];
@@ -9,47 +17,48 @@ export class Board {
   constructor(pieces: Piece[], totalTurns: number = 0) {
     this.pieces = pieces;
     this.totalTurns = totalTurns;
+    this.calculateAllMoves();
   }
 
   get currentTeam(): TeamType {
     return this.totalTurns % 2 === 0 ? TeamType.White : TeamType.Black;
   }
 
-  // calculateAllMoves() {
-  //   const currentTeam = this.currentTeam;
-  //   let movePossible = false;
+  calculateAllMoves() {
+    const currentTeam = this.currentTeam;
+    let movePossible = false;
 
-  //   for (const piece of this.pieces) {
-  //     if (currentTeam === piece.team) {
-  //       piece.possibleMoves = this.getValidMoves(piece, this.pieces);
-  //       if (piece.possibleMoves.length > 0) movePossible = true;
-  //     }
-  //   }
+    for (const piece of this.pieces) {
+      if (currentTeam === piece.team) {
+        piece.possibleMoves = this.getValidMoves(piece, this.pieces);
+        if (piece.possibleMoves.length > 0) movePossible = true;
+      }
+    }
 
-  //   if (!movePossible) {
-  //     this.winningTeam =
-  //       this.currentTeam === TeamType.White ? TeamType.Black : TeamType.White;
-  //   }
-  // }
+    if (!movePossible) {
+      this.winningTeam =
+        this.currentTeam === TeamType.White ? TeamType.Black : TeamType.White;
+    }
+  }
 
-  // getValidMoves(piece: Piece, boardState: Piece[]): Position[] {
-  //   switch (piece.type) {
-  //     case PieceType.Pawn:
-  //       return getPossiblePawnMoves(piece, boardState);
-  //     case PieceType.Knight:
-  //       return getPossibleKnightMoves(piece, boardState);
-  //     case PieceType.Bishop:
-  //       return getPossibleBishopMoves(piece, boardState);
-  //     case PieceType.Rook:
-  //       return getPossibleRookMoves(piece, boardState);
-  //     case PieceType.Queen:
-  //       return getPossibleQueenMoves(piece, boardState);
-  //     case PieceType.King:
-  //       return getPossibleKingMoves(piece, boardState);
-  //     default:
-  //       return [];
-  //   }
-  // }
+  getValidMoves(piece: Piece, boardState: Piece[]): Position[] {
+    switch (piece.type) {
+      case PieceType.Pawn:
+        return getPossiblePawnMoves(piece, boardState);
+      case PieceType.Knight:
+        return getPossibleKnightMoves(piece, boardState);
+      case PieceType.Bishop:
+        return getPossibleBishopMoves(piece, boardState);
+      case PieceType.Rook:
+        return getPossibleRookMoves(piece, boardState);
+      case PieceType.Queen:
+        return getPossibleQueenMoves(piece, boardState);
+      case PieceType.King:
+        return getPossibleKingMoves(piece, boardState);
+      default:
+        return [];
+    }
+  }
 
   playMove(
     pieceType: PieceType,
@@ -78,14 +87,14 @@ export class Board {
 
     const noOfTurns = this.totalTurns + 1;
     const clone = this.clone(noOfTurns);
+    clone.calculateAllMoves();
     return clone;
   }
 
   movePlayedValidityCheck(
     pieceType: PieceType,
     sourcePos: string,
-    destinationPos: string,
-    possibleMoves: any
+    destinationPos: string
   ): boolean {
     const currentTeam = this.currentTeam;
     const currentPieceIndex = this.pieces.findIndex(
@@ -94,8 +103,8 @@ export class Board {
     const updatedPosition = this.pieces[currentPieceIndex].position.clone();
     updatedPosition.clearPosition(positionMap[sourcePos]);
     updatedPosition.setPosition(positionMap[destinationPos]);
-    // return this.pieces[currentPieceIndex].possibleMoves.some((pos) => pos.bitboard === updatedPosition.bitboard);
-    return true;
+    return this.pieces[currentPieceIndex].possibleMoves.some((pos) => pos.bitboard === updatedPosition.bitboard);
+
   }
 
   parseBoardStateIn2DArray = (): string[][] => {
