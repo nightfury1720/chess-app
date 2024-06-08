@@ -2,6 +2,12 @@ const WebSocketServer = require("websocket").server;
 const http = require("http");
 const { createClient } = require("redis");
 const { pubClient, subClient, publishUpdate } = require("./pubSub");
+const {
+  matchPlayers,
+  removeUnmatchedPlayer,
+  broadcastMessageToOpponent,
+  originIsAllowed,
+} = require("./helperServerFunctions");
 
 // Create Redis client for persistence
 const cacheClient = createClient({
@@ -23,96 +29,6 @@ cacheClient.on("error", (err) => console.log("Redis Client Error", err));
   }
 })();
 
-// Function to get unmatched players from Redis
-async function getUnmatchedPlayers() {
-  return new Promise((resolve, reject) => {
-    cacheClient.lrange("unmatchedPlayers", 0, -1, (err, players) => {
-      if (err) {
-        console.error("Error getting unmatched players from Redis:", err);
-        reject(err);
-      } else {
-        resolve(players);
-      }
-    });
-  });
-}
-
-// Function to set unmatched players in Redis
-async function updateUnmatchedPlayers(players) {
-  return new Promise((resolve, reject) => {
-    cacheClient.del("unmatchedPlayers", (err) => {
-      if (err) {
-        console.error("Error deleting unmatched players from Redis:", err);
-        reject(err);
-      } else {
-        cacheClient.rpush("unmatchedPlayers", ...players, (err) => {
-          if (err) {
-            console.error("Error pushing unmatched players to Redis:", err);
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      }
-    });
-  });
-}
-
-// Function to match players
-async function matchPlayers() {
-  try {
-    const players = await getUnmatchedPlayers();
-    while (players.length >= 2) {
-      const player1 = players.shift();
-      const player2 = players.shift();
-
-      if (player1 && player2) {
-        const conn1 = connections.get(player1);
-        const conn2 = connections.get(player2);
-        const gameId = `game-${player1}-${player2}`;
-        const gameState = {
-          player1,
-          player2,
-          moves: [],
-        };
-
-        await cacheClient.set(gameId, JSON.stringify(gameState));
-
-        if (conn1 && conn2) {
-          conn1.sendUTF(
-            JSON.stringify({ type: "match", opponent: player2, gameId })
-          );
-          conn2.sendUTF(
-            JSON.stringify({ type: "match", opponent: player1, gameId })
-          );
-          console.log(`Matched players: ${player1} and ${player2}`);
-        } else if (conn1 || conn2) {
-          const distributedPlayer = conn1 ? player2 : player1;
-          const connectedConn = conn1 ? conn1 : conn2;
-          const connectedPlayer = conn1 ? player1 : player2;
-
-          connectedConn.sendUTF(
-            JSON.stringify({ type: "match", connectedPlayer, gameId })
-          );
-
-          publishUpdate(
-            "start-match",
-            JSON.stringify({ players: [distributedPlayer], gameId })
-          );
-        } else {
-          publishUpdate(
-            "start-match",
-            JSON.stringify({ players: [player1, player2], gameId })
-          );
-        }
-      }
-    }
-    await updateUnmatchedPlayers(players);
-  } catch (err) {
-    console.error("Error in matchPlayers:", err);
-  }
-}
-
 // Create HTTP server
 const server = http.createServer((request, response) => {
   console.log(`${new Date()} Received request for ${request.url}`);
@@ -130,11 +46,6 @@ const wsServer = new WebSocketServer({
   autoAcceptConnections: false,
 });
 
-function originIsAllowed(origin) {
-  // TODO: Put logic here to detect whether the specified origin is allowed.
-  return true;
-}
-
 // Store client connections
 const connections = new Map();
 
@@ -142,7 +53,9 @@ const connections = new Map();
 wsServer.on("request", async (request) => {
   if (!originIsAllowed(request.origin)) {
     request.reject();
-    console.log(`${new Date()} Connection from origin ${request.origin} rejected.`);
+    console.log(
+      `${new Date()} Connection from origin ${request.origin} rejected.`
+    );
     return;
   }
 
@@ -169,7 +82,10 @@ wsServer.on("request", async (request) => {
       } else if (msg.type === "initiateGame") {
         cacheClient.rpush("unmatchedPlayers", clientId, (err) => {
           if (err) {
-            console.error(`Failed to add ${clientId} to unmatched players:`, err);
+            console.error(
+              `Failed to add ${clientId} to unmatched players:`,
+              err
+            );
           } else {
             console.log(`Added an unmatched player: ${clientId}`);
             matchPlayers(); // Ensure this is only called after rpush is successful
@@ -177,31 +93,23 @@ wsServer.on("request", async (request) => {
         });
       }
     } else if (message.type === "binary") {
-      console.log(`Received Binary Message of ${message.binaryData.length} bytes from ${clientId}`);
+      console.log(
+        `Received Binary Message of ${message.binaryData.length} bytes from ${clientId}`
+      );
     }
   });
 
-  connection.on("close", (reasonCode, description) => {
+  connection.on("close", async (reasonCode, description) => {
     connections.delete(clientId);
-    console.log(`${new Date()} Peer ${connection.remoteAddress} (Client ID: ${clientId}) disconnected.`);
+    console.log(
+      `${new Date()} Peer ${
+        connection.remoteAddress
+      } (Client ID: ${clientId}) disconnected.`
+    );
+    await removeUnmatchedPlayer(clientId);
   });
 });
 
-function broadcastMessageToOpponent(gameId, senderId, message) {
-  cacheClient.get(gameId, (err, reply) => {
-    if (err) {
-      console.error("Error fetching game state from Redis:", err);
-      return;
-    }
-
-    const gameState = JSON.parse(reply);
-    const opponentId = gameState.player1 === senderId ? gameState.player2 : gameState.player1;
-    const opponentConn = connections.get(opponentId);
-
-    if (opponentConn) {
-      opponentConn.sendUTF(message);
-    } else {
-      pubClient.publish(gameId, JSON.stringify({ type: "move", gameId, message }));
-    }
-  });
-}
+module.exports = {
+  cacheClient
+};
