@@ -18,14 +18,14 @@ async function getUnmatchedPlayers(cacheClient) {
 
 // Function to remove a player from the unmatched players list
 async function removeUnmatchedPlayer(cacheClient, playerId) {
-    cacheClient.lrem("unmatchedPlayers", 0, playerId, (err, reply) => {
-      if (err) {
-        console.error("Error removing element from list:", err);
-      } else {
-        console.log(`Number of elements removed: ${reply}`);
-      }
-    });
-  }
+  cacheClient.lrem("unmatchedPlayers", 0, playerId, (err, reply) => {
+    if (err) {
+      console.error("Error removing element from list:", err);
+    } else {
+      console.log(`Number of elements removed: ${reply}`);
+    }
+  });
+}
 // Function to set unmatched players in Redis
 async function updateUnmatchedPlayers(cacheClient, players) {
   return new Promise((resolve, reject) => {
@@ -85,13 +85,17 @@ async function matchPlayers(cacheClient, connections) {
           );
 
           publishUpdate(
-            "start-match",
-            JSON.stringify({ players: [distributedPlayer], gameId })
+            `startGame-${distributedPlayer}`,
+            JSON.stringify({ gameId, opponentId: connectedPlayer })
           );
         } else {
           publishUpdate(
-            "start-match",
-            JSON.stringify({ players: [player1, player2], gameId })
+            `startGame-${player1}`,
+            JSON.stringify({ gameId, opponentId: player2 })
+          );
+          publishUpdate(
+            `startGame-${player2}`,
+            JSON.stringify({ gameId, opponentId: player1 })
           );
         }
       }
@@ -102,29 +106,6 @@ async function matchPlayers(cacheClient, connections) {
   }
 }
 
-const broadcastMessageToOpponent = async (cacheClient, connections, gameId, senderId, message) => {
-  cacheClient.get(gameId, (err, reply) => {
-    if (err) {
-      console.error("Error fetching game state from Redis:", err);
-      return;
-    }
-
-    const gameState = JSON.parse(reply);
-    const opponentId =
-      gameState.player1 === senderId ? gameState.player2 : gameState.player1;
-    const opponentConn = connections.get(opponentId);
-
-    if (opponentConn) {
-      opponentConn.sendUTF(message);
-    } else {
-      pubClient.publish(
-        gameId,
-        JSON.stringify({ type: "move", gameId, message })
-      );
-    }
-  });
-};
-
 function originIsAllowed(origin) {
   // TODO: Put logic here to detect whether the specified origin is allowed.
   return true;
@@ -134,7 +115,6 @@ module.exports = {
   originIsAllowed,
   matchPlayers,
   removeUnmatchedPlayer,
-  broadcastMessageToOpponent,
   getUnmatchedPlayers,
   updateUnmatchedPlayers,
 };

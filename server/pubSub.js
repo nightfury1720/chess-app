@@ -27,19 +27,38 @@ const subClient = pubSubClient.duplicate();
 (async () => {
   await pubClient.connect();
   await subClient.connect();
-
-  subClient.subscribe("gameUpdates", (message, channel) => {
-    console.log(`Received message on channel ${channel}: ${message}`);
-    // Handle the message appropriately
-  });
 })();
 
+const onSubscribe = (message, channel) => {
+  console.log(`Received message on channel ${channel}: ${message}`);
+
+}
 function publishUpdate(channel, message) {
-  pubClient.publish(channel, message);
+  pubClient.publish(channel, message, (err, reply) => {
+    if (err) {
+      console.error(`Failed to publish message to channel ${channel}:`, err);
+    } else {
+      console.log(`Message published to channel ${channel}: ${reply}`);
+    }
+  });
+}
+
+const subscribeToTopic = async(topic, onSubscribe) => {
+  try {
+    await subClient.subscribe(topic, (message, channel) => {
+      console.log(`Received message on channel ${channel}: ${message}`);
+      onSubscribe(message, channel);
+    });
+    console.log(`Subscribed to topic: ${topic}`);
+  } catch (err) {
+    console.error(`Failed to subscribe to topic ${topic}:`, err);
+  }
 }
 
 module.exports = {
   pubClient,
   subClient,
   publishUpdate,
+  onSubscribe,
+  subscribeToTopic,
 };

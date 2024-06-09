@@ -1,11 +1,11 @@
 const WebSocketServer = require("websocket").server;
 const http = require("http");
 const { createClient } = require("redis");
-const { pubClient, subClient, publishUpdate } = require("./pubSub");
+const { v4: uuidv4 } = require("uuid");
+const { subscribeToTopic, publishUpdate } = require("./pubSub");
 const {
   matchPlayers,
   removeUnmatchedPlayer,
-  broadcastMessageToOpponent,
   originIsAllowed,
 } = require("./helperServerFunctions");
 
@@ -49,6 +49,10 @@ const wsServer = new WebSocketServer({
 // Store client connections
 const connections = new Map();
 
+const handleStartGame = (message, channel) => {
+
+}
+subscribeToTopic("start-match", handleStartGame);
 // WebSocket request handling
 wsServer.on("request", async (request) => {
   if (!originIsAllowed(request.origin)) {
@@ -60,7 +64,7 @@ wsServer.on("request", async (request) => {
   }
 
   const connection = request.accept(null, request.origin);
-  const clientId = connection.remoteAddress;
+  const clientId = uuidv4();
   connections.set(clientId, connection);
   console.log(`${new Date()} Connection accepted. Client ID: ${clientId}`);
 
@@ -69,17 +73,28 @@ wsServer.on("request", async (request) => {
       console.log(`Received Message from ${clientId}: ${message.utf8Data}`);
       const msg = JSON.parse(message.utf8Data);
 
-      if (msg.type === "move") {
+      if (msg.type === "playedMove") {
         try {
-          const gameState = JSON.parse(await cacheClient.get(msg.gameId));
+          const opponentId = msg.opponentId;
+          let gameState = JSON.parse(await cacheClient.get(msg.gameId));
           gameState.moves.push(msg.move);
-
           await cacheClient.set(msg.gameId, JSON.stringify(gameState));
-          await broadcastMessageToOpponent(msg.gameId, clientId, msg);
+          const opponentConn = connections.get(destinationClientId);
+          if (opponentConn) {
+            opponentConn.sendUTF(message);
+          } else {
+            publishUpdate(
+              `playedMove-${opponentId}`,
+              JSON.stringify({
+                gameId,
+                move: msg.move,
+              })
+            );
+          }
         } catch (err) {
           console.error(`Failed to process move for ${clientId}:`, err);
         }
-      } else if (msg.type === "initiateGame") {
+      } else if (msg.type === "startGame") {
         cacheClient.rpush("unmatchedPlayers", clientId, (err) => {
           if (err) {
             console.error(
@@ -92,10 +107,6 @@ wsServer.on("request", async (request) => {
           }
         });
       }
-    } else if (message.type === "binary") {
-      console.log(
-        `Received Binary Message of ${message.binaryData.length} bytes from ${clientId}`
-      );
     }
   });
 
@@ -106,10 +117,6 @@ wsServer.on("request", async (request) => {
         connection.remoteAddress
       } (Client ID: ${clientId}) disconnected.`
     );
-    await removeUnmatchedPlayer(clientId);
+    await removeUnmatchedPlayer(cacheClient, clientId);
   });
 });
-
-module.exports = {
-  cacheClient
-};
