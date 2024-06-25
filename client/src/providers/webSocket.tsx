@@ -1,98 +1,54 @@
-"use client"
-import React, { ReactNode, useContext, useEffect, useState } from "react";
+'use client'
+import React, { createContext, ReactNode, useEffect, useRef, useState } from 'react';
 
-export type WebSocketContextType = [
-  (fn: (event: MessageEvent) => void, filter?: string) => void,
-  (message: string) => void
-];
+type WebSocketContextType = {
+  isReady: boolean; // Corrected type annotation for isReady
+  value: string | null; // Corrected type annotation for value
+  send: (data: string) => void; // Corrected type annotation for send
+};
 
-export const WebSocketContext = React.createContext<WebSocketContextType>([
-  () => {},
-  () => {},
-]);
+export const WebSocketContext = createContext<WebSocketContextType>({
+  isReady: false,
+  value: null,
+  send: (data: string) => {},
+});
 
 interface WebSocketProviderProps {
   children: ReactNode;
-  url: string;
-  keepAliveInterval?: number;
 }
 
-export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
-  children,
-  url,
-  keepAliveInterval,
-}) => {
-  const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
-  const [listeners, setListeners] = useState<{
-    [key: string]: ((event: MessageEvent) => void)[];
-  }>({});
-
-  const addListener = (fn: (event: MessageEvent) => void, filter = "any") => {
-    setListeners((currentListeners) => ({
-      ...currentListeners,
-      [filter]: [...(currentListeners[filter] || []), fn],
-    }));
-  };
-
-  const sendMessage = (message: string) => {
-    if (webSocket) {
-      webSocket.send(message);
-    }
-  };
-
-  const onMessage = (event: MessageEvent) => {
-    const { data } = event;
-    if (listeners[data.filter]) {
-      listeners[data.filter].forEach((listener) => listener(event));
-    }
-    if (listeners["any"]) {
-      listeners["any"].forEach((listener) => listener(event));
-    }
-  };
+export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
+  const [isReady, setIsReady] = useState<boolean>(false);
+  const [val, setVal] = useState<string | null>(null);
+  const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const socket = new WebSocket(url);
+    const socket = new WebSocket("ws://localhost:8080");
 
-    socket.onopen = () => {
-      setWebSocket(socket);
-      console.log("Connected to websocket");
-    };
+    socket.onopen = () => setIsReady(true);
+    socket.onclose = () => setIsReady(false);
+    socket.onmessage = (event) => setVal(event.data);
 
-    socket.onmessage = onMessage;
-
-    if (keepAliveInterval) {
-      const intervalId = setInterval(() => {
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ method: "ping" }));
-        }
-      }, keepAliveInterval);
-
-      return () => clearInterval(intervalId);
-    }
+    ws.current = socket;
 
     return () => {
       socket.close();
     };
-  }, [url, keepAliveInterval]);
+  }, []);
+
+  const send: WebSocketContextType['send'] = (data) => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(data);
+    } else {
+      console.error('WebSocket is not open.');
+    }
+  };
+
+  const contextValue: WebSocketContextType = { isReady, value: val, send };
 
   return (
-    <WebSocketContext.Provider value={[addListener, sendMessage]}>
+    <WebSocketContext.Provider value={contextValue}>
       {children}
     </WebSocketContext.Provider>
   );
-};
-
-export const useWebSocket = (
-  listener?: (event: MessageEvent) => void,
-  filter = "any"
-) => {
-  const [addListener, sendMessage] = useContext(WebSocketContext);
-
-  useEffect(() => {
-    if (listener) {
-      addListener(listener, filter);
-    }
-  }, [listener, filter, addListener]);
-
-  return { sendMessage };
 };

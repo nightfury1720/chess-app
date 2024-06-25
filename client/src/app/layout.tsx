@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <WebSocketProvider url="ws://localhost:8080">
+      <WebSocketProvider>
         <body className={inter.className}>{children}</body>
       </WebSocketProvider>
     </html>

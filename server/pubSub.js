@@ -29,10 +29,6 @@ const subClient = pubSubClient.duplicate();
   await subClient.connect();
 })();
 
-const onSubscribe = (message, channel) => {
-  console.log(`Received message on channel ${channel}: ${message}`);
-
-}
 function publishUpdate(channel, message) {
   pubClient.publish(channel, message, (err, reply) => {
     if (err) {
@@ -55,10 +51,20 @@ const subscribeToTopic = async(topic, onSubscribe) => {
   }
 }
 
+const unsubscribeFromTopic = async (topic) => {
+  try {
+    await subClient.unsubscribe(topic);
+    console.log(`Unsubscribed from topic: ${topic}`);
+  } catch (err) {
+    console.error(`Failed to unsubscribe from topic ${topic}:`, err);
+  }
+};
+
+
 module.exports = {
   pubClient,
   subClient,
   publishUpdate,
-  onSubscribe,
   subscribeToTopic,
+  unsubscribeFromTopic
 };

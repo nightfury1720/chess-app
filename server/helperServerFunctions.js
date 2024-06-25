@@ -4,47 +4,32 @@ const { pubClient, subClient, publishUpdate } = require("./pubSub");
 
 // Function to get unmatched players from Redis
 async function getUnmatchedPlayers(cacheClient) {
-  return new Promise((resolve, reject) => {
-    cacheClient.lrange("unmatchedPlayers", 0, -1, (err, players) => {
-      if (err) {
-        console.error("Error getting unmatched players from Redis:", err);
-        reject(err);
-      } else {
-        resolve(players);
-      }
-    });
+  return await cacheClient.lRange("unmatchedPlayers", 0, -1, (err, players) => {
+    if (err) {
+      console.error("Error getting unmatched players from Redis:", err);
+    }
   });
 }
 
 // Function to remove a player from the unmatched players list
 async function removeUnmatchedPlayer(cacheClient, playerId) {
-  cacheClient.lrem("unmatchedPlayers", 0, playerId, (err, reply) => {
-    if (err) {
-      console.error("Error removing element from list:", err);
-    } else {
-      console.log(`Number of elements removed: ${reply}`);
-    }
+  await cacheClient.lRem("unmatchedPlayers", 0, playerId, function (number) {
+    console.log("DELETED Keys: ", number);
   });
 }
+
 // Function to set unmatched players in Redis
 async function updateUnmatchedPlayers(cacheClient, players) {
-  return new Promise((resolve, reject) => {
-    cacheClient.del("unmatchedPlayers", (err) => {
-      if (err) {
-        console.error("Error deleting unmatched players from Redis:", err);
-        reject(err);
-      } else {
-        cacheClient.rpush("unmatchedPlayers", ...players, (err) => {
-          if (err) {
-            console.error("Error pushing unmatched players to Redis:", err);
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      }
-    });
-  });
+  try {
+    const multi = cacheClient.multi();
+    multi.del("unmatchedPlayers");
+    multi.rpush("unmatchedPlayers", ...players);
+    await multi.exec();
+    console.log("Updated unmatched players in Redis");
+  } catch (err) {
+    console.error("Error updating unmatched players in Redis:", err);
+    throw err;
+  }
 }
 
 // Function to match players

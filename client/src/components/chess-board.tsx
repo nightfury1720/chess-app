@@ -1,10 +1,10 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useContext } from "react";
 import Tile from "./tile";
 import { initializeChessboardPieces } from "../lib/helper";
 import { PieceType } from "../models/piece";
 import { Board } from "../models/boardState";
-import { useWebSocket } from "../providers/webSocket";
+import { WebSocketContext } from "../providers/webSocket";
 
 const xAxis = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const yAxis = ["1", "2", "3", "4", "5", "6", "7", "8"];
@@ -18,16 +18,18 @@ const Chessboard: React.FC<ChessBoardProps> = () => {
   const [selectedPiece, setSelectedPiece] = useState<string | null>(null);
   const [board, setBoard] = useState(new Board([]));
   const [possibleMoves, setPossibleMoves] = useState({});
-  const { sendMessage } = useWebSocket();
+  const { send: sendMessage } = useContext(WebSocketContext);
 
   const movePiece = (pieceType: PieceType, from: string, to: string) => {
     const destRowIndex = yAxis.indexOf(to[1]);
     const destColIndex = xAxis.indexOf(to[0]);
 
     const pieceTypeDest = parsedBoard[destRowIndex][destColIndex];
-    if (board.movePlayedValidityCheck(pieceType, from, to,[])) {
+    if (board.movePlayedValidityCheck(pieceType, from, to, [])) {
       setBoard(() => board.playMove(pieceType, from, to, pieceTypeDest));
-      sendMessage(JSON.stringify({ pieceType, from, to, "turns": board.totalTurns }));
+      sendMessage(
+        JSON.stringify({ pieceType, from, to, turns: board.totalTurns })
+      );
     } else {
       console.log("KAT GAYA");
     }

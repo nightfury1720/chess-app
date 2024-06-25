@@ -2,7 +2,11 @@ const WebSocketServer = require("websocket").server;
 const http = require("http");
 const { createClient } = require("redis");
 const { v4: uuidv4 } = require("uuid");
-const { subscribeToTopic, publishUpdate } = require("./pubSub");
+const {
+  unsubscribeFromTopic,
+  subscribeToTopic,
+  publishUpdate,
+} = require("./pubSub");
 const {
   matchPlayers,
   removeUnmatchedPlayer,
@@ -49,10 +53,6 @@ const wsServer = new WebSocketServer({
 // Store client connections
 const connections = new Map();
 
-const handleStartGame = (message, channel) => {
-
-}
-subscribeToTopic("start-match", handleStartGame);
 // WebSocket request handling
 wsServer.on("request", async (request) => {
   if (!originIsAllowed(request.origin)) {
@@ -68,6 +68,26 @@ wsServer.on("request", async (request) => {
   connections.set(clientId, connection);
   console.log(`${new Date()} Connection accepted. Client ID: ${clientId}`);
 
+  // Subscribe to the playedMove topic for this client
+  const playedMoveTopic = `playedMove-${clientId}`;
+  const startGameTopic = `startGame-${clientId}`;
+
+  const onSubscribeHandler = (message, channel) => {
+    const msg = JSON.parse(message);
+    const type = channel.split("-")[0];
+    const clientConn = connections.get(clientId);
+    if (clientConn) {
+      clientConn.sendUTF(
+        JSON.stringify({
+          ...msg,
+          type,
+        })
+      );
+    }
+  };
+  subscribeToTopic(startGameTopic, onSubscribeHandler);
+  subscribeToTopic(playedMoveTopic, onSubscribeHandler);
+
   connection.on("message", async (message) => {
     if (message.type === "utf8") {
       console.log(`Received Message from ${clientId}: ${message.utf8Data}`);
@@ -79,14 +99,14 @@ wsServer.on("request", async (request) => {
           let gameState = JSON.parse(await cacheClient.get(msg.gameId));
           gameState.moves.push(msg.move);
           await cacheClient.set(msg.gameId, JSON.stringify(gameState));
-          const opponentConn = connections.get(destinationClientId);
+          const opponentConn = connections.get(opponentId);
           if (opponentConn) {
             opponentConn.sendUTF(message);
           } else {
             publishUpdate(
               `playedMove-${opponentId}`,
               JSON.stringify({
-                gameId,
+                gameId: msg.gameId,
                 move: msg.move,
               })
             );
@@ -95,7 +115,7 @@ wsServer.on("request", async (request) => {
           console.error(`Failed to process move for ${clientId}:`, err);
         }
       } else if (msg.type === "startGame") {
-        cacheClient.rpush("unmatchedPlayers", clientId, (err) => {
+        cacheClient.rPush("unmatchedPlayers", clientId, (err) => {
           if (err) {
             console.error(
               `Failed to add ${clientId} to unmatched players:`,
@@ -106,17 +126,30 @@ wsServer.on("request", async (request) => {
             matchPlayers(); // Ensure this is only called after rpush is successful
           }
         });
+      } else{
+        console.log("Wrong type, pls check message Type")
       }
     }
   });
 
   connection.on("close", async (reasonCode, description) => {
-    connections.delete(clientId);
-    console.log(
-      `${new Date()} Peer ${
-        connection.remoteAddress
-      } (Client ID: ${clientId}) disconnected.`
-    );
-    await removeUnmatchedPlayer(cacheClient, clientId);
+    try {
+      connections.delete(clientId);
+      console.log(
+        `${new Date()} Peer ${
+          connection.remoteAddress
+        } (Client ID: ${clientId}) disconnected. ReasonCode: ${reasonCode}, description: ${description}`
+      );
+
+      // Unsubscribe from the topic
+      await unsubscribeFromTopic(playedMoveTopic);
+      await unsubscribeFromTopic(startGameTopic);
+      await removeUnmatchedPlayer(cacheClient, clientId);
+    } catch (err) {
+      console.error(
+        `Error during disconnection cleanup for Client ID: ${clientId}`,
+        err
+      );
+    }
   });
 });
