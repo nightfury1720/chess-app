@@ -1,6 +1,5 @@
 const WebSocketServer = require("websocket").server;
 const http = require("http");
-const { createClient } = require("redis");
 const { v4: uuidv4 } = require("uuid");
 const {
   unsubscribeFromTopic,
@@ -8,31 +7,11 @@ const {
   publishUpdate,
 } = require("./pubSub");
 const {
+  executeRedisCommand,
   matchPlayers,
   removeUnmatchedPlayer,
   originIsAllowed,
 } = require("./helperServerFunctions");
-
-// Create Redis client for persistence
-const cacheClient = createClient({
-  password: "OEOnoamGWLjfh3jyQU07Dpj0fRM4GtGM",
-  socket: {
-    host: "redis-14351.c305.ap-south-1-1.ec2.redns.redis-cloud.com",
-    port: 14351,
-  },
-});
-
-cacheClient.on("error", (err) => console.log("Redis Client Error", err));
-
-(async () => {
-  try {
-    await cacheClient.connect();
-    console.log("Connected to Redis for caching");
-  } catch (err) {
-    console.error("Failed to connect to Redis for caching", err);
-  }
-})();
-
 // Create HTTP server
 const server = http.createServer((request, response) => {
   console.log(`${new Date()} Received request for ${request.url}`);
@@ -85,6 +64,7 @@ wsServer.on("request", async (request) => {
       );
     }
   };
+
   subscribeToTopic(startGameTopic, onSubscribeHandler);
   subscribeToTopic(playedMoveTopic, onSubscribeHandler);
 
@@ -96,12 +76,18 @@ wsServer.on("request", async (request) => {
       if (msg.type === "playedMove") {
         try {
           const opponentId = msg.opponentId;
-          let gameState = JSON.parse(await cacheClient.get(msg.gameId));
+          let gameState = await JSON.parse(
+            await executeRedisCommand(["GET", msg.gameId])
+          );
           gameState.moves.push(msg.move);
-          await cacheClient.set(msg.gameId, JSON.stringify(gameState));
+          await executeRedisCommand([
+            "SET",
+            msg.gameId,
+            JSON.stringify(gameState),
+          ]);
           const opponentConn = connections.get(opponentId);
           if (opponentConn) {
-            opponentConn.sendUTF(message);
+            opponentConn.sendUTF(message.utf8Data);
           } else {
             publishUpdate(
               `playedMove-${opponentId}`,
@@ -115,19 +101,15 @@ wsServer.on("request", async (request) => {
           console.error(`Failed to process move for ${clientId}:`, err);
         }
       } else if (msg.type === "startGame") {
-        cacheClient.rPush("unmatchedPlayers", clientId, (err) => {
-          if (err) {
-            console.error(
-              `Failed to add ${clientId} to unmatched players:`,
-              err
-            );
-          } else {
-            console.log(`Added an unmatched player: ${clientId}`);
-            matchPlayers(); // Ensure this is only called after rpush is successful
-          }
-        });
-      } else{
-        console.log("Wrong type, pls check message Type")
+        try {
+          await executeRedisCommand(["RPUSH", "unmatchedPlayers", clientId]);
+          console.log(`Added an unmatched player: ${clientId}`);
+          await matchPlayers(connections); // Ensure this is only called after rpush is successful
+        } catch (err) {
+          console.error(`Failed to add ${clientId} to unmatched players:`, err);
+        }
+      } else {
+        console.log("Wrong type, please check message Type");
       }
     }
   });
@@ -141,10 +123,10 @@ wsServer.on("request", async (request) => {
         } (Client ID: ${clientId}) disconnected. ReasonCode: ${reasonCode}, description: ${description}`
       );
 
-      // Unsubscribe from the topic
+      // Unsubscribe from the topics
       await unsubscribeFromTopic(playedMoveTopic);
       await unsubscribeFromTopic(startGameTopic);
-      await removeUnmatchedPlayer(cacheClient, clientId);
+      await removeUnmatchedPlayer(clientId);
     } catch (err) {
       console.error(
         `Error during disconnection cleanup for Client ID: ${clientId}`,
